@@ -978,7 +978,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 csvContent += row.join(';') + '\n';
             });
 
-            downloadFile(csvContent, 'misure_elettriche.csv', 'text/csv;charset=utf-8;');
+           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+const fileName = `misure_elettriche_${timestamp}.csv`;
+downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
             showNotification('Dati esportati con successo in CSV!');
         }
 
@@ -1029,7 +1031,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 csvContent += row.join(';') + '\n';
             });
 
-            downloadFile(csvContent, 'misure_elettriche_con_foto.csv', 'text/csv;charset=utf-8;');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+const fileName = `misure_elettriche_con_foto_${timestamp}.csv`;
+downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
+
             showNotification('Dati con foto esportati con successo in CSV!');
         }
 
