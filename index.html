@@ -1490,8 +1490,7 @@ function handlePodImportResults(importedCount, errorCount, newPodsSet, fileType,
 if (!editingId) {
     const isDuplicate = measurements.some(m =>
         m.pod === pod &&
-        m.quadroName === quadroName &&
-        m.interruttore === interruttore &&
+
         m.hierarchyLevel === hierarchyLevel
     );
 
