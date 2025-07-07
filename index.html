@@ -830,16 +830,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         quadroName: measurement["Quadro"]?.trim() || '',
                         interruttore: measurement["Interruttore/Punto"]?.trim() || '',
                         hierarchyLevel: measurement["Livello Gerarchia"]?.trim() || '',
-                        valueR: parseFloat(measurement["Misura R (A)"]) || 0,
-                        valueS: parseFloat(measurement["Misura S (A)"]) || 0,
-                        valueT: parseFloat(measurement["Misura T (A)"]) || 0,
-                        average: parseFloat(measurement["Media (A)"]) || 0,
-                        cosfi: parseFloat(measurement["Cos φ"]) || 0.9,
+                        valueR: parseFloat((measurement["Misura R (A)"] || '').replace(',', '.')) || 0,
+                        valueS: parseFloat((measurement["Misura S (A)"] || '').replace(',', '.')) || 0,
+                        valueT: parseFloat((measurement["Misura T (A)"] || '').replace(',', '.')) || 0,
+                        average: parseFloat((measurement["Media (A)"] || '').replace(',', '.')) || 0,
+                        cosfi: parseFloat((measurement["Cos φ"] || '').replace(',', '.')) || 0.9,
                         voltageType: measurement["Tipo Tensione"]?.trim() || 'Trifase',
                         voltageValueUsed: parseFloat(measurement["Valore Tensione Usato (V)"]) || 400,
                         hoursYear: parseInt(measurement["Ore/Anno"]) || 8760,
-                        power: parseFloat(measurement["Potenza (W)"]) || 0,
-                        energy: parseFloat(measurement["Energia Stimata (kWh/anno)"]) || 0,
+                        power: parseFloat((measurement["Potenza (W)"] || '').replace(',', '.')) || 0,
+                        energy: parseFloat((measurement["Energia Stimata (kWh/anno)"] || '').replace(',', '.')) || 0,
                         photos: [], // Le foto non possono essere importate da CSV
                         notes: measurement["Note"]?.replace(/"/g, '').trim() || ''
                     };
