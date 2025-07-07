@@ -1819,8 +1819,8 @@ valueTInput.style.backgroundColor = '#f5f5f5';
     let total = 0;
     for (const k in subNodeMap) {
         const subNode = subNodeMap[k];
-        if (subNode.measure && !isNaN(parseFloat(subNode.measure.average))) {
-            total += parseFloat(subNode.measure.average);
+        if (subNode.measure && !isNaN(parseFloat(subNode.measure.average.toFixed(2)))) {
+            total += parseFloat(subNode.measure.average.toFixed(2));
         }
         // NON includere i figli dei figli (nipoti)
     }
@@ -1845,8 +1845,8 @@ valueTInput.style.backgroundColor = '#f5f5f5';
         div.className = 'hierarchy-quadro';
 
         let ampere = 0;
-        if (node.measure && !isNaN(parseFloat(node.measure.average))) {
-            ampere = parseFloat(node.measure.average);
+        if (node.measure && !isNaN(parseFloat(node.measure.average.toFixed(2)))) {
+            ampere = parseFloat(node.measure.average.toFixed(2));
         }
 
         const childrenSum = sumDirectChildAmpere(node.children);
@@ -1890,7 +1890,7 @@ legendaDiv.innerHTML = `
     <ul style="list-style: none; padding-left: 10px;">
         <li>⚠️ Interruttore > nodo padre</li>
         <li>🔴 Somma quadri/interruttori > nodo</li>
-        <li>✅ Nessun errore</li>
+
     </ul>
 `;
 treeContainer.appendChild(legendaDiv);
