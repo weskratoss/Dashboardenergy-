@@ -830,16 +830,16 @@ document.addEventListener('DOMContentLoaded', function () {
                         quadroName: measurement["Quadro"]?.trim() || '',
                         interruttore: measurement["Interruttore/Punto"]?.trim() || '',
                         hierarchyLevel: measurement["Livello Gerarchia"]?.trim() || '',
-                        valueR: parseFloat((measurement["Misura R (A)"] || '').replace(',', '.')) || 0,
-                        valueS: parseFloat((measurement["Misura S (A)"] || '').replace(',', '.')) || 0,
-                        valueT: parseFloat((measurement["Misura T (A)"] || '').replace(',', '.')) || 0,
-                        average: parseFloat((measurement["Media (A)"] || '').replace(',', '.')) || 0,
-                        cosfi: parseFloat((measurement["Cos φ"] || '').replace(',', '.')) || 0.9,
+                        valueR: parseFloat(measurement["Misura R (A)"]) || 0,
+                        valueS: parseFloat(measurement["Misura S (A)"]) || 0,
+                        valueT: parseFloat(measurement["Misura T (A)"]) || 0,
+                        average: parseFloat(measurement["Media (A)"]) || 0,
+                        cosfi: parseFloat(measurement["Cos φ"]) || 0.9,
                         voltageType: measurement["Tipo Tensione"]?.trim() || 'Trifase',
                         voltageValueUsed: parseFloat(measurement["Valore Tensione Usato (V)"]) || 400,
                         hoursYear: parseInt(measurement["Ore/Anno"]) || 8760,
-                        power: parseFloat((measurement["Potenza (W)"] || '').replace(',', '.')) || 0,
-                        energy: parseFloat((measurement["Energia Stimata (kWh/anno)"] || '').replace(',', '.')) || 0,
+                        power: parseFloat(measurement["Potenza (W)"]) || 0,
+                        energy: parseFloat(measurement["Energia Stimata (kWh/anno)"]) || 0,
                         photos: [], // Le foto non possono essere importate da CSV
                         notes: measurement["Note"]?.replace(/"/g, '').trim() || ''
                     };
@@ -978,9 +978,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 csvContent += row.join(';') + '\n';
             });
 
-           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const fileName = `misure_elettriche_${timestamp}.csv`;
-downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
+            downloadFile(csvContent, 'misure_elettriche.csv', 'text/csv;charset=utf-8;');
             showNotification('Dati esportati con successo in CSV!');
         }
 
@@ -1031,10 +1029,7 @@ downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
                 csvContent += row.join(';') + '\n';
             });
 
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-const fileName = `misure_elettriche_con_foto_${timestamp}.csv`;
-downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
-
+            downloadFile(csvContent, 'misure_elettriche_con_foto.csv', 'text/csv;charset=utf-8;');
             showNotification('Dati con foto esportati con successo in CSV!');
         }
 
@@ -1490,12 +1485,13 @@ function handlePodImportResults(importedCount, errorCount, newPodsSet, fileType,
 if (!editingId) {
     const isDuplicate = measurements.some(m =>
         m.pod === pod &&
-
+        m.quadroName === quadroName &&
+        m.interruttore === interruttore &&
         m.hierarchyLevel === hierarchyLevel
     );
 
     if (isDuplicate) {
-        showNotification("❌ Esiste già una misura con lo stesso POD e Livello Gerarchico.", "error");
+        showNotification("❌ Esiste già una misura con lo stesso POD, Quadro, Interruttore e Livello Gerarchico.", "error");
         return; // blocca il salvataggio
     }
 }
@@ -1819,8 +1815,8 @@ valueTInput.style.backgroundColor = '#f5f5f5';
     let total = 0;
     for (const k in subNodeMap) {
         const subNode = subNodeMap[k];
-        if (subNode.measure && !isNaN(parseFloat(subNode.measure.average.toFixed(2)))) {
-            total += parseFloat(subNode.measure.average.toFixed(2));
+        if (subNode.measure && !isNaN(parseFloat(subNode.measure.average))) {
+            total += parseFloat(subNode.measure.average);
         }
         // NON includere i figli dei figli (nipoti)
     }
@@ -1845,8 +1841,8 @@ valueTInput.style.backgroundColor = '#f5f5f5';
         div.className = 'hierarchy-quadro';
 
         let ampere = 0;
-        if (node.measure && !isNaN(parseFloat(node.measure.average.toFixed(2)))) {
-            ampere = parseFloat(node.measure.average.toFixed(2));
+        if (node.measure && !isNaN(parseFloat(node.measure.average))) {
+            ampere = parseFloat(node.measure.average);
         }
 
         const childrenSum = sumDirectChildAmpere(node.children);
@@ -1890,7 +1886,7 @@ legendaDiv.innerHTML = `
     <ul style="list-style: none; padding-left: 10px;">
         <li>⚠️ Interruttore > nodo padre</li>
         <li>🔴 Somma quadri/interruttori > nodo</li>
-
+        <li>✅ Nessun errore</li>
     </ul>
 `;
 treeContainer.appendChild(legendaDiv);
@@ -2146,5 +2142,400 @@ function escapeHTML(str) {
     });
 }
     </script>
+
+<!-- ===== SEZIONE ANALISI CONSUMI - VERSIONE ROBUSTA ===== -->
+<!-- SheetJS per lettura Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Chart.js per grafici -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+<style>
+#consumiAnalysisSection {
+    margin: 30px auto;
+    padding: 25px;
+    max-width: 1300px;
+    background: linear-gradient(135deg, #fff 0%, #f9f9f9 100%);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border: 2px solid #FFD700;
+}
+#consumiAnalysisSection h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+    border-bottom: 3px solid #FFD700;
+    padding-bottom: 10px;
+}
+#podSelectGraphContainer {
+    margin: 20px 0;
+    padding: 15px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+#podSelectGraph {
+    padding: 10px;
+    font-size: 14px;
+    border: 2px solid #FFD700;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 600px;
+}
+#consumiChartCanvas {
+    margin-top: 20px;
+    max-height: 450px;
+}
+</style>
+
+<div id="consumiAnalysisSection" style="display:none;">
+    <h2>📊 Analisi Consumi Elettrici per POD</h2>
+    <div id="podSelectGraphContainer">
+        <label style="font-weight: 600; font-size: 16px;">Seleziona POD da visualizzare:</label>
+        <select id="podSelectGraph">
+            <option value="">-- Seleziona un POD --</option>
+        </select>
+    </div>
+    <div id="chartTitleDisplay" style="text-align: center; font-size: 18px; font-weight: 600; margin: 20px 0; color: #555;"></div>
+    <canvas id="consumiChartCanvas"></canvas>
+</div>
+
+<script>
+(function() {
+    console.log('🚀 Inizializzazione modulo analisi consumi...');
+
+    // Variabili globali per l'analisi consumi
+    window.consumiAnalysisData = {
+        anagrafica: {},
+        consumi: {},
+        chartInstance: null,
+        initialized: false
+    };
+
+    // Funzione di inizializzazione
+    function initConsumiAnalysis() {
+        console.log('🔧 Setup analisi consumi...');
+
+        // Verifica librerie caricate
+        if (typeof XLSX === 'undefined') {
+            console.error('❌ XLSX non caricato');
+            setTimeout(initConsumiAnalysis, 100);
+            return;
+        }
+        if (typeof Chart === 'undefined') {
+            console.error('❌ Chart.js non caricato');
+            setTimeout(initConsumiAnalysis, 100);
+            return;
+        }
+
+        console.log('✅ Librerie XLSX e Chart.js caricate');
+
+        const podFileInput = document.getElementById('podFileInput');
+        if (!podFileInput) {
+            console.error('❌ Input podFileInput non trovato');
+            setTimeout(initConsumiAnalysis, 100);
+            return;
+        }
+
+        console.log('✅ Input podFileInput trovato');
+
+        // Aggiungi listener con cattura per essere sicuri di intercettarlo
+        podFileInput.addEventListener('change', handleFileChange, true);
+
+        window.consumiAnalysisData.initialized = true;
+        console.log('✅ Modulo analisi consumi inizializzato correttamente');
+    }
+
+    function handleFileChange(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            console.log('ℹ️ Nessun file selezionato');
+            return;
+        }
+
+        console.log('📂 File intercettato per analisi consumi:', file.name);
+
+        // Usa setTimeout per non bloccare il caricamento principale
+        setTimeout(function() {
+            processFileForConsumi(file);
+        }, 500);
+    }
+
+    function processFileForConsumi(file) {
+        console.log('⚙️ Inizio elaborazione file per consumi...');
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            try {
+                console.log('📖 Lettura file completata, parsing...');
+
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                console.log('📋 Sheets disponibili:', workbook.SheetNames);
+
+                if (workbook.SheetNames.length < 2) {
+                    console.warn('⚠️ File contiene solo', workbook.SheetNames.length, 'sheet');
+                    return;
+                }
+
+                // Sheet 1: Anagrafica
+                const sheet1 = workbook.Sheets[workbook.SheetNames[0]];
+                const rowsAna = XLSX.utils.sheet_to_json(sheet1);
+
+                // Sheet 2: Consumi
+                const sheet2 = workbook.Sheets[workbook.SheetNames[1]];
+                const rowsCons = XLSX.utils.sheet_to_json(sheet2);
+
+                console.log('📊 Righe anagrafica:', rowsAna.length);
+                console.log('📊 Righe consumi:', rowsCons.length);
+
+                if (rowsAna.length === 0 || rowsCons.length === 0) {
+                    console.warn('⚠️ Dati vuoti negli sheet');
+                    return;
+                }
+
+                const headersAna = Object.keys(rowsAna[0]);
+                const headersCons = Object.keys(rowsCons[0]);
+
+                console.log('📊 Headers anagrafica:', headersAna);
+                console.log('📊 Headers consumi:', headersCons);
+
+                // Trova colonne
+                const podColAna = findColumn(headersAna, ['POD']);
+                const denomColAna = findColumn(headersAna, ['DENOMINAZIONE', 'UTENZA', 'NOME']);
+                const podColCons = findColumn(headersCons, ['POD']);
+                const meseCol = findColumn(headersCons, ['MESE', 'MES']);
+                const annoCol = findColumn(headersCons, ['ANNO', 'YEAR']);
+                const consumoCol = findColumn(headersCons, ['CONSUM', 'KWH']);
+
+                console.log('🔍 Colonne:');
+                console.log('  Ana: POD=' + podColAna + ', Denom=' + denomColAna);
+                console.log('  Cons: POD=' + podColCons + ', Mese=' + meseCol + ', Anno=' + annoCol + ', Consumo=' + consumoCol);
+
+                if (!podColAna || !podColCons || !consumoCol) {
+                    console.error('❌ Colonne necessarie mancanti');
+                    alert('⚠️ Il file non contiene le colonne necessarie');
+                    return;
+                }
+
+                // Reset
+                window.consumiAnalysisData.anagrafica = {};
+                window.consumiAnalysisData.consumi = {};
+
+                // Carica anagrafica
+                for (let i = 0; i < rowsAna.length; i++) {
+                    const row = rowsAna[i];
+                    const pod = String(row[podColAna] || '').trim();
+                    const denom = denomColAna ? String(row[denomColAna] || '').trim() : pod;
+                    if (pod) {
+                        window.consumiAnalysisData.anagrafica[pod] = denom;
+                    }
+                }
+
+                console.log('✅ Anagrafica:', Object.keys(window.consumiAnalysisData.anagrafica).length, 'POD');
+
+                // Carica consumi
+                for (let i = 0; i < rowsCons.length; i++) {
+                    const row = rowsCons[i];
+                    const pod = String(row[podColCons] || '').trim();
+
+                    if (!pod || !(pod in window.consumiAnalysisData.anagrafica)) continue;
+
+                    let consumoVal = row[consumoCol];
+
+                    if (typeof consumoVal === 'number') {
+                        consumoVal = Math.round(consumoVal);
+                    } else {
+                        let v = String(consumoVal || '0').trim();
+                        if (v === '-' || v === '') {
+                            consumoVal = 0;
+                        } else {
+                            consumoVal = parseFloat(v) || 0;
+                            consumoVal = Math.round(consumoVal);
+                        }
+                    }
+
+                    const mese = meseCol ? row[meseCol] : null;
+                    const anno = annoCol ? row[annoCol] : null;
+
+                    if (!window.consumiAnalysisData.consumi[pod]) {
+                        window.consumiAnalysisData.consumi[pod] = [];
+                    }
+
+                    window.consumiAnalysisData.consumi[pod].push({
+                        Mese: mese,
+                        Anno: anno,
+                        Consumo: consumoVal,
+                        Label: (mese && anno) ? mese + '/' + anno : 'Dato ' + (window.consumiAnalysisData.consumi[pod].length + 1)
+                    });
+                }
+
+                console.log('✅ Consumi:', Object.keys(window.consumiAnalysisData.consumi).length, 'POD con dati');
+
+                // Popola dropdown
+                populateDropdown();
+
+            } catch (error) {
+                console.error('❌ Errore:', error);
+                alert('❌ Errore: ' + error.message);
+            }
+        };
+
+        reader.onerror = function() {
+            console.error('❌ Errore lettura file');
+        };
+
+        reader.readAsArrayBuffer(file);
+    }
+
+    function populateDropdown() {
+        const select = document.getElementById('podSelectGraph');
+        select.innerHTML = '<option value="">-- Seleziona un POD --</option>';
+
+        let count = 0;
+        const pods = Object.keys(window.consumiAnalysisData.anagrafica);
+
+        for (let i = 0; i < pods.length; i++) {
+            const pod = pods[i];
+            if (window.consumiAnalysisData.consumi[pod] && window.consumiAnalysisData.consumi[pod].length > 0) {
+                const opt = document.createElement('option');
+                opt.value = pod;
+                opt.textContent = pod + ' - ' + window.consumiAnalysisData.anagrafica[pod];
+                select.appendChild(opt);
+                count++;
+            }
+        }
+
+        console.log('✅ Dropdown:', count, 'opzioni');
+
+        const section = document.getElementById('consumiAnalysisSection');
+        if (count > 0) {
+            section.style.display = 'block';
+            console.log('✅ Sezione VISIBILE');
+        } else {
+            section.style.display = 'none';
+            console.warn('⚠️ Nessun POD con consumi');
+        }
+
+        select.onchange = function() {
+            if (this.value) {
+                showConsumoGraph(this.value);
+            } else {
+                clearChart();
+            }
+        };
+    }
+
+    function findColumn(headers, keywords) {
+        for (let i = 0; i < headers.length; i++) {
+            const h = headers[i];
+            if (!h) continue;
+            const hs = String(h).toUpperCase();
+            for (let j = 0; j < keywords.length; j++) {
+                if (hs.includes(keywords[j])) return h;
+            }
+        }
+        return null;
+    }
+
+    function showConsumoGraph(pod) {
+        const data = window.consumiAnalysisData.consumi[pod] || [];
+        const denom = window.consumiAnalysisData.anagrafica[pod] || pod;
+
+        document.getElementById('chartTitleDisplay').textContent = 
+            'Consumi: ' + pod + ' - ' + denom;
+
+        console.log('📊 Grafico per:', pod, '- Punti:', data.length);
+
+        updateChart(data);
+    }
+
+    function clearChart() {
+        if (window.consumiAnalysisData.chartInstance) {
+            window.consumiAnalysisData.chartInstance.destroy();
+            window.consumiAnalysisData.chartInstance = null;
+        }
+        document.getElementById('chartTitleDisplay').textContent = '';
+    }
+
+    function updateChart(data) {
+        const canvas = document.getElementById('consumiChartCanvas');
+        const ctx = canvas.getContext('2d');
+
+        if (window.consumiAnalysisData.chartInstance) {
+            window.consumiAnalysisData.chartInstance.destroy();
+        }
+
+        if (!data.length) {
+            window.consumiAnalysisData.chartInstance = null;
+            return;
+        }
+
+        data.sort(function(a, b) {
+            if (a.Anno !== b.Anno) return (a.Anno || 0) - (b.Anno || 0);
+            return (a.Mese || 0) - (b.Mese || 0);
+        });
+
+        const labels = [];
+        const values = [];
+        for (let i = 0; i < data.length; i++) {
+            labels.push(data[i].Label);
+            values.push(data[i].Consumo);
+        }
+
+        console.log('📈 Grafico:', data.length, 'punti -', values.slice(0, 5));
+
+        window.consumiAnalysisData.chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Consumo kWh',
+                    data: values,
+                    backgroundColor: '#FFB300',
+                    borderColor: '#FF8C00',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: true, position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Consumo: ' + context.parsed.y.toLocaleString() + ' kWh';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { title: { display: true, text: 'Periodo' } },
+                    y: { 
+                        title: { display: true, text: 'Consumo (kWh)' },
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toLocaleString();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log('✅ Grafico renderizzato');
+    }
+
+    // Avvia inizializzazione
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initConsumiAnalysis);
+    } else {
+        initConsumiAnalysis();
+    }
+})();
+</script>
 </body>
 </html>
