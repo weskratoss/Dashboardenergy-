@@ -1370,14 +1370,40 @@ function handlePodImportResults(importedCount, errorCount, newPodsSet, fileType,
 
             // Ordina le misure dalla più recente alla meno recente
             const sortedMeasurements = [...measurements].sort((a, b) => {
-                const dateTimeA = new Date(`${a.measureDate}T${a.measureTime}`);
-                const dateTimeB = new Date(`${b.measureDate}T${b.measureTime}`);
-                return dateTimeB - dateTimeA;
+            // Ordina per POD crescente
+            if (a.pod !== b.pod) {
+                return a.pod.localeCompare(b.pod);
+            }
+            // Poi ordina per livello gerarchico crescente
+            const levelsA = a.hierarchyLevel.split('.').map(Number);
+            const levelsB = b.hierarchyLevel.split('.').map(Number);
+            for (let i = 0; i < Math.max(levelsA.length, levelsB.length); i++) {
+                const valA = levelsA[i] || 0;
+                const valB = levelsB[i] || 0;
+                if (valA !== valB) return valA - valB;
+            }
+            return 0;
+        });
+
+        // Trova l'ultima misura acquisita (la più recente in assoluto)
+        let latestMeasure = null;
+        if (measurements.length > 0) {
+            latestMeasure = measurements.reduce((latest, current) => {
+                const latestTime = new Date(latest.measureDate + 'T' + latest.measureTime);
+                const currentTime = new Date(current.measureDate + 'T' + current.measureTime);
+                return currentTime > latestTime ? current : latest;
             });
+        }
 
             sortedMeasurements.forEach(measure => {
+            const isLatest = latestMeasure && measure.id === latestMeasure.id;
                 const row = dataTableBody.insertRow();
-                row.setAttribute('data-id', measure.id); // Aggiungi un attributo data-id per riferimento
+                row.setAttribute('data-id', measure.id);
+            // Evidenzia l'ultima misura acquisita
+            if (isLatest) {
+                row.style.backgroundColor = '#d4edda';
+                row.style.fontWeight = '600';
+            } // Aggiungi un attributo data-id per riferimento
                 row.insertCell().textContent = measure.compilatoreName; // Nuovo campo compilatore
                 row.insertCell().textContent = measure.pod;
                 row.insertCell().textContent = `${measure.measureDate} ${measure.measureTime}`;
@@ -2634,4 +2660,5 @@ function escapeHTML(str) {
 </script>
 </body>
 </html>
+
 
