@@ -2143,7 +2143,7 @@ function escapeHTML(str) {
 }
     </script>
 
-<!-- ===== SEZIONE ANALISI CONSUMI - VERSIONE ROBUSTA ===== -->
+<!-- ===== SEZIONE ANALISI CONSUMI CON FILTRO ANNO ===== -->
 <!-- SheetJS per lettura Excel -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Chart.js per grafici -->
@@ -2166,63 +2166,125 @@ function escapeHTML(str) {
     border-bottom: 3px solid #FFD700;
     padding-bottom: 10px;
 }
-#podSelectGraphContainer {
+.filter-container {
     margin: 20px 0;
     padding: 15px;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
 }
-#podSelectGraph {
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.filter-group label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+}
+#podSelectGraph, #yearFilterSelect {
     padding: 10px;
     font-size: 14px;
     border: 2px solid #FFD700;
     border-radius: 6px;
-    width: 100%;
-    max-width: 600px;
+    min-width: 200px;
 }
 #consumiChartCanvas {
     margin-top: 20px;
     max-height: 450px;
 }
+#chartStats {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f0f0f0;
+    border-radius: 8px;
+    display: none;
+}
+#chartStats .stat-item {
+    display: inline-block;
+    margin: 0 15px;
+    font-size: 14px;
+}
+#chartStats .stat-label {
+    font-weight: 600;
+    color: #666;
+}
+#chartStats .stat-value {
+    font-weight: 700;
+    color: #FF8C00;
+    font-size: 16px;
+}
 </style>
 
 <div id="consumiAnalysisSection" style="display:none;">
     <h2>📊 Analisi Consumi Elettrici per POD</h2>
-    <div id="podSelectGraphContainer">
-        <label style="font-weight: 600; font-size: 16px;">Seleziona POD da visualizzare:</label>
-        <select id="podSelectGraph">
-            <option value="">-- Seleziona un POD --</option>
-        </select>
+
+    <div class="filter-container">
+        <div class="filter-group">
+            <label>Seleziona POD:</label>
+            <select id="podSelectGraph">
+                <option value="">-- Seleziona un POD --</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Filtra per anno:</label>
+            <select id="yearFilterSelect">
+                <option value="">Tutti gli anni</option>
+            </select>
+        </div>
     </div>
+
     <div id="chartTitleDisplay" style="text-align: center; font-size: 18px; font-weight: 600; margin: 20px 0; color: #555;"></div>
+
+    <div id="chartStats">
+        <span class="stat-item">
+            <span class="stat-label">Totale:</span>
+            <span class="stat-value" id="statTotal">0 kWh</span>
+        </span>
+        <span class="stat-item">
+            <span class="stat-label">Media:</span>
+            <span class="stat-value" id="statMedia">0 kWh</span>
+        </span>
+        <span class="stat-item">
+            <span class="stat-label">Min:</span>
+            <span class="stat-value" id="statMin">0 kWh</span>
+        </span>
+        <span class="stat-item">
+            <span class="stat-label">Max:</span>
+            <span class="stat-value" id="statMax">0 kWh</span>
+        </span>
+    </div>
+
     <canvas id="consumiChartCanvas"></canvas>
 </div>
 
 <script>
 (function() {
-    console.log('🚀 Inizializzazione modulo analisi consumi...');
+    console.log('🚀 Inizializzazione modulo analisi consumi con filtro anno...');
 
-    // Variabili globali per l'analisi consumi
     window.consumiAnalysisData = {
         anagrafica: {},
         consumi: {},
         chartInstance: null,
-        initialized: false
+        initialized: false,
+        currentPod: '',
+        currentYear: ''
     };
 
-    // Funzione di inizializzazione
     function initConsumiAnalysis() {
         console.log('🔧 Setup analisi consumi...');
 
-        // Verifica librerie caricate
         if (typeof XLSX === 'undefined') {
-            console.error('❌ XLSX non caricato');
             setTimeout(initConsumiAnalysis, 100);
             return;
         }
         if (typeof Chart === 'undefined') {
-            console.error('❌ Chart.js non caricato');
             setTimeout(initConsumiAnalysis, 100);
             return;
         }
@@ -2231,77 +2293,64 @@ function escapeHTML(str) {
 
         const podFileInput = document.getElementById('podFileInput');
         if (!podFileInput) {
-            console.error('❌ Input podFileInput non trovato');
             setTimeout(initConsumiAnalysis, 100);
             return;
         }
 
         console.log('✅ Input podFileInput trovato');
 
-        // Aggiungi listener con cattura per essere sicuri di intercettarlo
         podFileInput.addEventListener('change', handleFileChange, true);
 
+        // Listener per filtro anno
+        const yearFilter = document.getElementById('yearFilterSelect');
+        yearFilter.onchange = function() {
+            window.consumiAnalysisData.currentYear = this.value;
+            if (window.consumiAnalysisData.currentPod) {
+                showConsumoGraph(window.consumiAnalysisData.currentPod);
+            }
+        };
+
         window.consumiAnalysisData.initialized = true;
-        console.log('✅ Modulo analisi consumi inizializzato correttamente');
+        console.log('✅ Modulo inizializzato');
     }
 
     function handleFileChange(event) {
         const file = event.target.files[0];
-        if (!file) {
-            console.log('ℹ️ Nessun file selezionato');
-            return;
-        }
+        if (!file) return;
 
-        console.log('📂 File intercettato per analisi consumi:', file.name);
-
-        // Usa setTimeout per non bloccare il caricamento principale
-        setTimeout(function() {
-            processFileForConsumi(file);
-        }, 500);
+        console.log('📂 File intercettato:', file.name);
+        setTimeout(function() { processFileForConsumi(file); }, 500);
     }
 
     function processFileForConsumi(file) {
-        console.log('⚙️ Inizio elaborazione file per consumi...');
+        console.log('⚙️ Elaborazione file...');
 
         const reader = new FileReader();
 
         reader.onload = function(e) {
             try {
-                console.log('📖 Lettura file completata, parsing...');
-
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
 
-                console.log('📋 Sheets disponibili:', workbook.SheetNames);
+                console.log('📋 Sheets:', workbook.SheetNames);
 
                 if (workbook.SheetNames.length < 2) {
-                    console.warn('⚠️ File contiene solo', workbook.SheetNames.length, 'sheet');
+                    console.warn('⚠️ Meno di 2 sheet');
                     return;
                 }
 
-                // Sheet 1: Anagrafica
                 const sheet1 = workbook.Sheets[workbook.SheetNames[0]];
                 const rowsAna = XLSX.utils.sheet_to_json(sheet1);
-
-                // Sheet 2: Consumi
                 const sheet2 = workbook.Sheets[workbook.SheetNames[1]];
                 const rowsCons = XLSX.utils.sheet_to_json(sheet2);
 
-                console.log('📊 Righe anagrafica:', rowsAna.length);
-                console.log('📊 Righe consumi:', rowsCons.length);
+                console.log('📊 Righe anagrafica:', rowsAna.length, '| consumi:', rowsCons.length);
 
-                if (rowsAna.length === 0 || rowsCons.length === 0) {
-                    console.warn('⚠️ Dati vuoti negli sheet');
-                    return;
-                }
+                if (rowsAna.length === 0 || rowsCons.length === 0) return;
 
                 const headersAna = Object.keys(rowsAna[0]);
                 const headersCons = Object.keys(rowsCons[0]);
 
-                console.log('📊 Headers anagrafica:', headersAna);
-                console.log('📊 Headers consumi:', headersCons);
-
-                // Trova colonne
                 const podColAna = findColumn(headersAna, ['POD']);
                 const denomColAna = findColumn(headersAna, ['DENOMINAZIONE', 'UTENZA', 'NOME']);
                 const podColCons = findColumn(headersCons, ['POD']);
@@ -2309,21 +2358,19 @@ function escapeHTML(str) {
                 const annoCol = findColumn(headersCons, ['ANNO', 'YEAR']);
                 const consumoCol = findColumn(headersCons, ['CONSUM', 'KWH']);
 
-                console.log('🔍 Colonne:');
-                console.log('  Ana: POD=' + podColAna + ', Denom=' + denomColAna);
-                console.log('  Cons: POD=' + podColCons + ', Mese=' + meseCol + ', Anno=' + annoCol + ', Consumo=' + consumoCol);
+                console.log('🔍 Colonne trovate - POD Ana:', podColAna, '| POD Cons:', podColCons, '| Consumo:', consumoCol);
 
                 if (!podColAna || !podColCons || !consumoCol) {
-                    console.error('❌ Colonne necessarie mancanti');
-                    alert('⚠️ Il file non contiene le colonne necessarie');
+                    console.error('❌ Colonne mancanti');
                     return;
                 }
 
-                // Reset
                 window.consumiAnalysisData.anagrafica = {};
                 window.consumiAnalysisData.consumi = {};
 
-                // Carica anagrafica
+                // Set per raccogliere anni unici
+                const yearsSet = new Set();
+
                 for (let i = 0; i < rowsAna.length; i++) {
                     const row = rowsAna[i];
                     const pod = String(row[podColAna] || '').trim();
@@ -2335,7 +2382,6 @@ function escapeHTML(str) {
 
                 console.log('✅ Anagrafica:', Object.keys(window.consumiAnalysisData.anagrafica).length, 'POD');
 
-                // Carica consumi
                 for (let i = 0; i < rowsCons.length; i++) {
                     const row = rowsCons[i];
                     const pod = String(row[podColCons] || '').trim();
@@ -2359,6 +2405,9 @@ function escapeHTML(str) {
                     const mese = meseCol ? row[meseCol] : null;
                     const anno = annoCol ? row[annoCol] : null;
 
+                    // Raccogli anno
+                    if (anno) yearsSet.add(anno);
+
                     if (!window.consumiAnalysisData.consumi[pod]) {
                         window.consumiAnalysisData.consumi[pod] = [];
                     }
@@ -2371,22 +2420,35 @@ function escapeHTML(str) {
                     });
                 }
 
-                console.log('✅ Consumi:', Object.keys(window.consumiAnalysisData.consumi).length, 'POD con dati');
+                console.log('✅ Consumi caricati per', Object.keys(window.consumiAnalysisData.consumi).length, 'POD');
 
-                // Popola dropdown
+                // Popola filtro anni
+                populateYearFilter(yearsSet);
+
+                // Popola dropdown POD
                 populateDropdown();
 
             } catch (error) {
                 console.error('❌ Errore:', error);
-                alert('❌ Errore: ' + error.message);
             }
         };
 
-        reader.onerror = function() {
-            console.error('❌ Errore lettura file');
-        };
-
         reader.readAsArrayBuffer(file);
+    }
+
+    function populateYearFilter(yearsSet) {
+        const yearFilter = document.getElementById('yearFilterSelect');
+        yearFilter.innerHTML = '<option value="">Tutti gli anni</option>';
+
+        const years = Array.from(yearsSet).sort();
+        console.log('📅 Anni disponibili:', years);
+
+        for (let i = 0; i < years.length; i++) {
+            const opt = document.createElement('option');
+            opt.value = years[i];
+            opt.textContent = years[i];
+            yearFilter.appendChild(opt);
+        }
     }
 
     function populateDropdown() {
@@ -2415,10 +2477,10 @@ function escapeHTML(str) {
             console.log('✅ Sezione VISIBILE');
         } else {
             section.style.display = 'none';
-            console.warn('⚠️ Nessun POD con consumi');
         }
 
         select.onchange = function() {
+            window.consumiAnalysisData.currentPod = this.value;
             if (this.value) {
                 showConsumoGraph(this.value);
             } else {
@@ -2440,15 +2502,48 @@ function escapeHTML(str) {
     }
 
     function showConsumoGraph(pod) {
-        const data = window.consumiAnalysisData.consumi[pod] || [];
+        let data = window.consumiAnalysisData.consumi[pod] || [];
         const denom = window.consumiAnalysisData.anagrafica[pod] || pod;
 
+        // Filtra per anno se selezionato
+        const selectedYear = window.consumiAnalysisData.currentYear;
+        if (selectedYear) {
+            data = data.filter(function(item) {
+                return item.Anno == selectedYear;
+            });
+            console.log('🔍 Filtro anno', selectedYear, '- Dati:', data.length);
+        }
+
+        const yearText = selectedYear ? ' (Anno: ' + selectedYear + ')' : '';
         document.getElementById('chartTitleDisplay').textContent = 
-            'Consumi: ' + pod + ' - ' + denom;
+            'Consumi: ' + pod + ' - ' + denom + yearText;
 
         console.log('📊 Grafico per:', pod, '- Punti:', data.length);
 
         updateChart(data);
+        updateStats(data);
+    }
+
+    function updateStats(data) {
+        const statsDiv = document.getElementById('chartStats');
+
+        if (!data.length) {
+            statsDiv.style.display = 'none';
+            return;
+        }
+
+        const values = data.map(function(d) { return d.Consumo; });
+        const total = values.reduce(function(a, b) { return a + b; }, 0);
+        const avg = Math.round(total / values.length);
+        const min = Math.min.apply(null, values);
+        const max = Math.max.apply(null, values);
+
+        document.getElementById('statTotal').textContent = total.toLocaleString() + ' kWh';
+        document.getElementById('statMedia').textContent = avg.toLocaleString() + ' kWh';
+        document.getElementById('statMin').textContent = min.toLocaleString() + ' kWh';
+        document.getElementById('statMax').textContent = max.toLocaleString() + ' kWh';
+
+        statsDiv.style.display = 'block';
     }
 
     function clearChart() {
@@ -2457,6 +2552,7 @@ function escapeHTML(str) {
             window.consumiAnalysisData.chartInstance = null;
         }
         document.getElementById('chartTitleDisplay').textContent = '';
+        document.getElementById('chartStats').style.display = 'none';
     }
 
     function updateChart(data) {
@@ -2484,7 +2580,7 @@ function escapeHTML(str) {
             values.push(data[i].Consumo);
         }
 
-        console.log('📈 Grafico:', data.length, 'punti -', values.slice(0, 5));
+        console.log('📈 Rendering:', data.length, 'punti');
 
         window.consumiAnalysisData.chartInstance = new Chart(ctx, {
             type: 'bar',
@@ -2529,7 +2625,6 @@ function escapeHTML(str) {
         console.log('✅ Grafico renderizzato');
     }
 
-    // Avvia inizializzazione
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initConsumiAnalysis);
     } else {
@@ -2539,3 +2634,4 @@ function escapeHTML(str) {
 </script>
 </body>
 </html>
+
