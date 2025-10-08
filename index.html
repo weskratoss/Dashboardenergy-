@@ -470,7 +470,207 @@
                 padding: 8px 15px;
             }
         }
-    </style>
+    
+/* === STILI GERARCHIA MIGLIORATA === */
+.tree-container {
+    font-family: 'Roboto', sans-serif;
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.tree-node {
+    margin: 5px 0;
+}
+
+.tree-branch {
+    margin-left: 30px;
+    position: relative;
+}
+
+.tree-branch::before {
+    content: "";
+    position: absolute;
+    left: -15px;
+    top: 0;
+    bottom: 50%;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.tree-branch::after {
+    content: "";
+    position: absolute;
+    left: -15px;
+    top: 22px;
+    width: 15px;
+    height: 2px;
+    background: #dee2e6;
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 4px 0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    gap: 12px;
+    border: 2px solid transparent;
+}
+
+.tree-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.tree-item.pod {
+    background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+    border-left: 5px solid #ff6b6b;
+}
+
+.tree-item.intermediate {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left: 5px solid #2196F3;
+    font-weight: 600;
+}
+
+.tree-item.leaf {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-left: 5px solid #4CAF50;
+}
+
+.tree-item.logical {
+    background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+    border-left: 5px solid #9e9e9e;
+    font-style: italic;
+}
+
+.tree-item.warning {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border-left: 5px solid #ff9800;
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.9; }
+}
+
+.tree-icon {
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.tree-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tree-label {
+    font-weight: 600;
+    color: #212529;
+}
+
+.tree-sublabel {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.tree-values {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.value-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.value-badge.measured {
+    background: #4CAF50;
+    color: white;
+}
+
+.value-badge.calculated {
+    background: #2196F3;
+    color: white;
+}
+
+.value-badge.coverage {
+    background: #FFC107;
+    color: #333;
+}
+
+.value-badge.status {
+    background: #28a745;
+    color: white;
+    font-size: 11px;
+}
+
+.value-badge.status.warning {
+    background: #ff9800;
+}
+
+.progress-bar-container {
+    width: 120px;
+    height: 6px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.3s ease;
+}
+
+.hierarchy-legend {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.legend-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 15px;
+    border-radius: 3px;
+}
+
+</style>
 </head>
 <body>
     <header>
@@ -1802,124 +2002,254 @@ valueTInput.style.backgroundColor = '#f5f5f5';
 
         // Funzione per mostrare la gerarchia dell'impianto
         function showHierarchy() {
-    const treeContainer = document.getElementById('hierarchyTree');
-    treeContainer.innerHTML = '';
+        const treeContainer = document.getElementById('hierarchyTree');
+        treeContainer.innerHTML = '';
 
-    const hierarchyByPod = {};
-    measurements.forEach(m => {
-        if (!hierarchyByPod[m.pod]) hierarchyByPod[m.pod] = [];
-        hierarchyByPod[m.pod].push(m);
-    });
+        console.log('🌳 Generazione gerarchia migliorata...');
 
-    for (const pod in hierarchyByPod) {
-        const podDiv = document.createElement('div');
-        podDiv.className = 'hierarchy-pod';
-        podDiv.innerHTML = `<strong>${pod}</strong>`;
-
-        const tree = {};
-
-        hierarchyByPod[pod].forEach(measure => {
-            const path = measure.hierarchyLevel.trim();
-            if (!path) return;
-
-            const levels = path.split('.');
-            let current = tree;
-
-            for (let i = 0; i < levels.length; i++) {
-                const levelKey = levels.slice(0, i + 1).join('.');
-                if (!current[levelKey]) {
-                    current[levelKey] = {
-                        children: {},
-                        measure: (i === levels.length - 1) ? measure : null
-                    };
-                }
-                current = current[levelKey].children;
+        // Organizza i dati per POD
+        const hierarchyByPod = {};
+        measurements.forEach(m => {
+            if (!hierarchyByPod[m.pod]) {
+                hierarchyByPod[m.pod] = [];
             }
+            hierarchyByPod[m.pod].push(m);
         });
 
-        function sumDirectChildAmpere(subNodeMap) {
-    let total = 0;
-    for (const k in subNodeMap) {
-        const subNode = subNodeMap[k];
-        if (subNode.measure && !isNaN(parseFloat(subNode.measure.average))) {
-            total += parseFloat(subNode.measure.average);
+        if (Object.keys(hierarchyByPod).length === 0) {
+            treeContainer.innerHTML = '<p style="text-align: center; color: #777; padding: 40px;">Nessuna misura salvata per visualizzare la gerarchia.</p>';
+            document.getElementById('hierarchyModal').style.display = 'flex';
+            return;
         }
-        // NON includere i figli dei figli (nipoti)
+
+        const mainTreeContainer = document.createElement('div');
+        mainTreeContainer.className = 'tree-container';
+
+        // Per ogni POD, crea la struttura ad albero
+        for (const pod in hierarchyByPod) {
+            const podDiv = document.createElement('div');
+            podDiv.className = 'tree-node';
+
+            // Calcola totale misure per questo POD
+            const totalMeasurements = hierarchyByPod[pod].length;
+            const avgValue = hierarchyByPod[pod].reduce((sum, m) => sum + m.average, 0) / totalMeasurements;
+
+            // Nodo POD (radice)
+            const podItem = document.createElement('div');
+            podItem.className = 'tree-item pod';
+            podItem.innerHTML = `
+                <span class="tree-icon">🏭</span>
+                <div class="tree-content">
+                    <div class="tree-label">${pod}</div>
+                    <div class="tree-sublabel">${totalMeasurements} misure totali</div>
+                </div>
+                <div class="tree-values">
+                    <span class="value-badge measured">📊 ${avgValue.toFixed(1)} A media</span>
+                </div>
+            `;
+            podDiv.appendChild(podItem);
+
+            // Costruisci la struttura gerarchica
+            const tree = {};
+            hierarchyByPod[pod].forEach(measure => {
+                const path = measure.hierarchyLevel.trim();
+                if (!path) return;
+
+                const levels = path.split('.');
+                let current = tree;
+
+                for (let i = 0; i < levels.length; i++) {
+                    const levelKey = levels.slice(0, i + 1).join('.');
+                    if (!current[levelKey]) {
+                        current[levelKey] = {
+                            children: {},
+                            measure: i === levels.length - 1 ? measure : null,
+                            level: i,
+                            name: levels[i]
+                        };
+                    }
+                    current = current[levelKey].children;
+                }
+            });
+
+            // Renderizza l'albero
+            renderTreeNodeImproved(tree, podDiv, 0, hierarchyByPod[pod]);
+            mainTreeContainer.appendChild(podDiv);
+        }
+
+        // Aggiungi legenda
+        const legendDiv = document.createElement('div');
+        legendDiv.className = 'hierarchy-legend';
+        legendDiv.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 10px;">📋 Legenda Visualizzazione</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #ffd89b, #19547b);"></div>
+                    <span>🏭 POD - Punto di prelievo</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb);"></div>
+                    <span>⚡ Intermedio - Misura + figli</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9);"></div>
+                    <span>🔌 Foglia - Solo misura</span>
+                </div>
+                <div class="legend-item">
+                    <span class="value-badge measured">📊 Misurato</span>
+                    <span>Valore rilevato</span>
+                </div>
+                <div class="legend-item">
+                    <span class="value-badge calculated">➕ Somma</span>
+                    <span>Calcolato dai figli</span>
+                </div>
+                <div class="legend-item">
+                    <span class="value-badge coverage">94%</span>
+                    <span>Copertura figli/padre</span>
+                </div>
+                <div class="legend-item">
+                    <span class="value-badge status">✓ OK</span>
+                    <span>Coerente</span>
+                </div>
+                <div class="legend-item">
+                    <span class="value-badge status warning">⚠️ Anomalia</span>
+                    <span>Figli > Padre</span>
+                </div>
+            </div>
+        `;
+
+        treeContainer.appendChild(mainTreeContainer);
+        treeContainer.appendChild(legendDiv);
+
+        document.getElementById('hierarchyModal').style.display = 'flex';
+
+        console.log('✅ Gerarchia migliorata generata');
     }
-    return total;
-}
 
-        function renderNode(nodeMap, container, parentAmpere = null) {
-    const sortedKeys = Object.keys(nodeMap).sort((a, b) => {
-        const aParts = a.split('.').map(Number);
-        const bParts = b.split('.').map(Number);
-        for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-            const aVal = aParts[i] || 0;
-            const bVal = bParts[i] || 0;
-            if (aVal !== bVal) return aVal - bVal;
-        }
-        return 0;
-    });
+    function renderTreeNodeImproved(nodeMap, container, depth, allMeasures) {
+        const sortedKeys = Object.keys(nodeMap).sort((a, b) => {
+            const aParts = a.split('.').map(Number);
+            const bParts = b.split('.').map(Number);
 
-    sortedKeys.forEach(key => {
-        const node = nodeMap[key];
-        const div = document.createElement('div');
-        div.className = 'hierarchy-quadro';
+            for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                const aVal = aParts[i] || 0;
+                const bVal = bParts[i] || 0;
+                if (aVal !== bVal) return aVal - bVal;
+            }
+            return 0;
+        });
 
-        let ampere = 0;
-        if (node.measure && !isNaN(parseFloat(node.measure.average))) {
-            ampere = parseFloat(node.measure.average);
-        }
+        sortedKeys.forEach(key => {
+            const node = nodeMap[key];
+            const hasChildren = Object.keys(node.children).length > 0;
 
-        const childrenSum = sumDirectChildAmpere(node.children);
-        let statusIcon = '';
-        if (parentAmpere !== null && ampere > parentAmpere) {
-            statusIcon = ' ⚠️';
-        }
-        if (ampere > 0 && childrenSum > ampere) {
-            statusIcon = ' 🔴';
-        }
+            const branchDiv = document.createElement('div');
+            branchDiv.className = 'tree-branch';
 
-        // ✅ Etichetta migliorata con livello gerarchico completo
-        let label = '';
-if (node.measure && Object.keys(node.children).length === 0) {
-    // Nodo foglia con misura
-    label = `[${key}] ${node.measure.quadroName} (${node.measure.interruttore}) — ${ampere} A`;
-} else if (node.measure) {
-    // Nodo con misura e figli
-    label = `[${key}] ${node.measure.quadroName} (${node.measure.interruttore}) — ${ampere} A, figli: ${childrenSum} A${statusIcon}`;
-} else {
-    // Nodo senza misura ma con figli
-    label = `[${key}] — figli: ${childrenSum} A${statusIcon}`;
-}
+            const itemDiv = document.createElement('div');
 
+            let className = 'tree-item ';
+            let icon = '';
+            let label = '';
+            let sublabel = '';
+            let measuredValue = 0;
+            let calculatedValue = 0;
+            let coverage = 0;
+            let isAnomaly = false;
 
-        div.textContent = label;
-        container.appendChild(div);
+            if (node.measure) {
+                measuredValue = node.measure.average;
+                label = `Livello ${key} - ${node.measure.quadroName}`;
+                sublabel = `${node.measure.interruttore} | ${node.measure.voltageType}`;
 
-        if (Object.keys(node.children).length > 0) {
-            renderNode(node.children, div, ampere);
-        }
-    });
-}
+                if (hasChildren) {
+                    // Nodo intermedio: ha misura + figli
+                    className += 'intermediate';
+                    icon = '⚡';
+                    calculatedValue = sumDirectChildAmpere(node.children);
+                    coverage = measuredValue > 0 ? (calculatedValue / measuredValue * 100) : 0;
+                    isAnomaly = calculatedValue > measuredValue;
 
-        renderNode(tree, podDiv);
-        treeContainer.appendChild(podDiv);
-        const legendaDiv = document.createElement('div');
-legendaDiv.className = 'hierarchy-legend';
-legendaDiv.innerHTML = `
-    <div><strong>Legenda:</strong></div>
-    <ul style="list-style: none; padding-left: 10px;">
-        <li>⚠️ Interruttore > nodo padre</li>
-        <li>🔴 Somma quadri/interruttori > nodo</li>
-        <li>✅ Nessun errore</li>
-    </ul>
-`;
-treeContainer.appendChild(legendaDiv);
+                    if (isAnomaly) className = 'tree-item warning';
+                } else {
+                    // Nodo foglia: solo misura
+                    className += 'leaf';
+                    icon = '🔌';
+                }
+            } else if (hasChildren) {
+                // Nodo logico: solo somma
+                className += 'logical';
+                icon = '📁';
+                label = `Livello ${key} - Aggregazione`;
+                sublabel = 'Solo somma (non misurato)';
+                calculatedValue = sumDirectChildAmpere(node.children);
+            }
+
+            itemDiv.className = className;
+
+            let valuesHTML = '';
+            if (measuredValue > 0) {
+                valuesHTML += `<span class="value-badge measured">📊 ${measuredValue.toFixed(1)} A</span>`;
+            }
+            if (calculatedValue > 0) {
+                valuesHTML += `<span class="value-badge calculated">➕ ${calculatedValue.toFixed(1)} A figli</span>`;
+            }
+            if (coverage > 0) {
+                const coverageClass = isAnomaly ? 'warning' : 'coverage';
+                valuesHTML += `<span class="value-badge ${coverageClass}">${coverage.toFixed(0)}% copertura</span>`;
+                if (measuredValue > 0) {
+                    const progressWidth = Math.min(coverage, 100);
+                    valuesHTML += `
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: ${progressWidth}%; background: ${isAnomaly ? 'linear-gradient(90deg, #ff9800, #ff5722)' : 'linear-gradient(90deg, #4CAF50, #8BC34A)'}"></div>
+                        </div>
+                    `;
+                }
+            }
+
+            let statusHTML = '';
+            if (hasChildren && measuredValue > 0) {
+                if (isAnomaly) {
+                    statusHTML = '<span class="value-badge status warning">⚠️ Anomalia</span>';
+                } else {
+                    statusHTML = '<span class="value-badge status">✓ Coerente</span>';
+                }
+            } else if (!hasChildren && measuredValue > 0) {
+                statusHTML = '<span class="value-badge status">✓ Foglia</span>';
+            }
+
+            itemDiv.innerHTML = `
+                <span class="tree-icon">${icon}</span>
+                <div class="tree-content">
+                    <div class="tree-label">${label}</div>
+                    <div class="tree-sublabel">${sublabel}</div>
+                </div>
+                <div class="tree-values">
+                    ${valuesHTML}
+                    ${statusHTML}
+                </div>
+            `;
+
+            branchDiv.appendChild(itemDiv);
+
+            if (hasChildren) {
+                renderTreeNodeImproved(node.children, branchDiv, depth + 1, allMeasures);
+            }
+
+            container.appendChild(branchDiv);
+        });
     }
 
-    document.getElementById('hierarchyModal').style.display = 'flex';
-}
+    function sumDirectChildAmpere(subNodeMap) {
+        let total = 0;
+        for (const k in subNodeMap) {
+            const subNode = subNodeMap[k];
+            if (subNode.measure && !isNaN(parseFloat(subNode.measure.average))) {
+                total += parseFloat(subNode.measure.average);
+            }
+        }
+        return total;
+    }
 
 
 
@@ -2660,5 +2990,6 @@ function escapeHTML(str) {
 </script>
 </body>
 </html>
+
 
 
